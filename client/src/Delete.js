@@ -32,15 +32,34 @@ class Remove extends React.Component {
   }
     
     handleSubmit = (event) => {
-      fetch('/delete', { //Loadbalancer DNS Name + /delete
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('You must be logged in to delete contacts');
+        return;
+      }
+      
+      fetch('/api/auth/delete', {
           method: 'DELETE',
           body: JSON.stringify(this.props.details),
           headers: {
-            "Content-Type": "application/json"
-        }
+            "Content-Type": "application/json",
+            "x-auth-token": token  // Add the token to the request headers
+          }
+        })
+        .then(res => {
+          if (!res.ok) {
+            throw new Error('Failed to delete contact');
+          }
+          return res.text();
         })
         .then(res => this.close())
         .then(res => this.updateData())
+        .catch(err => {
+          console.error(err);
+          alert('Error deleting contact');
+        });
+        
         event.preventDefault();  
     }
 
@@ -58,14 +77,14 @@ class Remove extends React.Component {
                 }}
               />
               {'  '}
-              Jeste li sigurni?
+              Are you sure?
             </Modal.Body>
             <Modal.Footer>
               <Button onClick={this.handleSubmit} appearance="primary">
-                Da
+                Yes
               </Button>
               <Button onClick={this.close} appearance="subtle">
-                Ne
+                No
               </Button>
             </Modal.Footer>
           </Modal>

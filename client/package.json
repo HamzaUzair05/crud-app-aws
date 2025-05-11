@@ -8,14 +8,16 @@
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^7.2.1",
+    "http-proxy-middleware": "^3.0.5",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
+    "react-router-dom": "^5.2.0",
     "react-scripts": "3.4.1",
     "rsuite": "^4.7.2"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "set NODE_OPTIONS=--openssl-legacy-provider && react-scripts start",
+    "build": "set NODE_OPTIONS=--openssl-legacy-provider && react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "deploy": "aws s3 sync build/ s3://PUT YOUR BUCKET NAME HERE"
@@ -39,5 +41,6 @@
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "request": "^2.88.2"
-  }
+  },
+  "proxy": "http://localhost:9000/api"
 }

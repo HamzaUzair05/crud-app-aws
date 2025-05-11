@@ -28,31 +28,31 @@ class Details extends React.Component{
             onHide={this.close}
           >
             <Drawer.Header>
-              <Drawer.Title>Detalji</Drawer.Title>
+              <Drawer.Title>Details</Drawer.Title>
             </Drawer.Header>
             <Drawer.Body>
-              <p><b>Ime:</b> {this.props.details.Ime}</p>
+              <p><b>First Name:</b> {this.props.details.Ime}</p>
               <Divider className="divider-margin"/>
-              <p><b>Prezime:</b> {this.props.details.Prezime}</p>
+              <p><b>Last Name:</b> {this.props.details.Prezime}</p>
               <Divider className="divider-margin"/>
               <p><b>Email:</b> {this.props.details.Email}</p>
               <Divider className="divider-margin"/>
-              <p><b>Telefon:</b> {this.props.details.Telefon}</p>
+              <p><b>Phone:</b> {this.props.details.Telefon}</p>
               <Divider className="divider-margin"/>
-              <p><b>Adresa:</b> {this.props.details.Adresa}</p>
+              <p><b>Address:</b> {this.props.details.Adresa}</p>
               <Divider className="divider-margin"/>
-              <p><b>Linkedin:</b> {this.props.details.Linkedin}</p>
+              <p><b>LinkedIn:</b> {this.props.details.Linkedin}</p>
               <Divider className="divider-margin"/>
               <p><b>Skype:</b> {this.props.details.Skype}</p>
               <Divider className="divider-margin"/>
               <p><b>Instagram:</b> {this.props.details.Instagram}</p>
               <Divider className="divider-margin"/>
-              <p><b>Datum rodjenja:</b> {this.props.details.Datum_rodjenja}</p>
+              <p><b>Date of Birth:</b> {this.props.details.Datum_rodjenja}</p>
               <Divider className="divider-margin"/>
-              <p><b>JMBG:</b> {this.props.details.JMBG}</p>
+              <p><b>ID Number:</b> {this.props.details.JMBG}</p>
             </Drawer.Body>
             <Drawer.Footer>
-              <Button onClick={this.close} appearance="primary">Nazad</Button>
+              <Button onClick={this.close} appearance="primary">Back</Button>
             </Drawer.Footer>
           </Drawer>
         </React.Fragment>

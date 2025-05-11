@@ -1,0 +1,57 @@
+```
+                               Internet
+                                  |
+                                  v
+                    +-------------------------+
+                    |     Route 53 (Optional) |
+                    +-------------------------+
+                                  |
+                                  v
+                    +-------------------------+
+                    |   Application Load      |
+                    |    Balancer (ALB)       |
+                    +-------------------------+
+                          /            \
+                         /              \
+             +-----------------+  +------------------+
+             |                 |  |                  |
+             v                 v  v                  v
++------------------------+  +-------------------------+
+|     EC2 Instance       |  |     EC2 Instance        |
+| (Docker Container with |  | (Docker Container with  |
+|     Backend API)       |  |      Backend API)       |
++------------------------+  +-------------------------+
+             |                           |
+             v                           v
+   +--------------------+      +--------------------+
+   |  AWS VPC           |      |     Amazon S3      |
+   |  Private Subnet    |      |   (File Storage)   |
+   +--------------------+      +--------------------+
+             |
+             v
+   +--------------------+
+   |    Amazon RDS      |
+   |  (MySQL Database)  |
+   +--------------------+
+```
+
+This architecture shows:
+
+1. **Frontend Tier**:
+   - React frontend deployed on Elastic Beanstalk (not shown in diagram)
+   - Accessed directly by users
+
+2. **API Tier**:
+   - NodeJS backend in Docker containers running on EC2 instances
+   - Load balanced by an Application Load Balancer (ALB)
+   - Scaled horizontally for redundancy
+
+3. **Storage Tier**:
+   - User data stored in Amazon RDS MySQL database
+   - Files and images stored in Amazon S3 bucket
+
+4. **Security**:
+   - EC2 instances in private subnets
+   - RDS in private subnet, only accessible from EC2
+   - S3 access controlled by IAM policies
+   - Application Load Balancer in public subnet

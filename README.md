@@ -1,53 +1,73 @@
-# React + NodeJS + MySQL application ( CloudFormation template )
+# CRUD Application with AWS Cloud Deployment
 
-## React on S3, NodeJS on ECS and MySQL on RDS
+A full-stack application featuring React frontend and Node.js backend, deployed on AWS infrastructure with S3 storage integration.
 
-### Architecture:
+## Live Demo URLs
+- **Frontend**: [https://your-eb-environment-url.elasticbeanstalk.com](https://your-eb-environment-url.elasticbeanstalk.com)
+- **Backend API**: [http://your-alb-endpoint.region.elb.amazonaws.com](http://your-alb-endpoint.region.elb.amazonaws.com)
 
-![Architecture](https://imgur.com/RFFuGLl.png)
+## Architecture Overview
 
-### Application description: 
+This application implements a modern cloud-native architecture with:
 
-Simple CRUD application, front-end built by using React, back-end by using NodeJS and for database MySQL was used. On front-end  table is displaying list of users from MySQL database and there are options for creating, updating, deleting the users and also getting their details. Table is primarily showing specific number of columns, while details, create and edit form give an insight into all the attributes that one user is supposed to have.
+- **Frontend**: React SPA hosted on AWS Elastic Beanstalk
+- **Backend**: Node.js API in Docker containers on EC2 with ALB
+- **Database**: MySQL on Amazon RDS
+- **Storage**: Amazon S3 for file uploads
+- **Security**: VPC with public/private subnets, security groups, IAM roles
 
-### Get it up & running: 
+![Architecture Diagram](docs/images/architecture-diagram.png)
 
-Before everything, make sure that you have AWS CLI installed, and of course an AWS account.
+## Features
 
-#### 1. RDS Deploy: 
+- User authentication with JWT
+- Contact management (CRUD operations)
+- File upload to S3
+- Responsive UI
+- Containerized backend
+- Cloud-native deployment
 
-Before deploying, you first need to modify [rds.yml](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/cloudformation/rds.yml) file inside of cloudformation folder, and add **DBInstanceID**, **DBName**, **DBUsername**, **DBPassword** in order for a resource to be properly created, after you've changed those, make sure that you are in a cloudformation folder in your terminal path and run the following: 
+## Deployment Guide
 
-`aws cloudformation deploy --template-file rds.yml --stack-name [YOUR STACK NAME 1]`
+### Prerequisites
+- AWS CLI installed and configured
+- Node.js and npm
+- Docker
+- Git
 
-#### 2. Deploy the [EC2 Cluster with fully public network](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/cloudformation/cluster-ec2-public-vpc.yml)
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/your-username/crud-app-aws.git
+cd crud-app-aws
+```
 
-`aws cloudformation deploy --template-file cluster-ec2-public-vpc.yml  --stack-name [YOUR STACK NAME 2]`
+### Step 2: Configure AWS Credentials
+```bash
+# Set your AWS profile
+./set-aws-profile.ps1
+```
 
-#### 3. Deploy [the external, public ALB](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/cloudformation/alb-external.yml) ingress
+### Step 3: Deploy the Infrastructure
+```bash
+# Run the deployment script
+./deploy.ps1
+```
 
-`aws cloudformation deploy --template-file alb-external.yml --stack-name [YOUR STACK NAME 3]`
+The script will:
+1. Create VPC, subnets, and security groups
+2. Deploy RDS MySQL database
+3. Create S3 bucket for file storage
+4. Build and push Docker image to ECR
+5. Deploy EC2 instances with ALB
+6. Deploy frontend to Elastic Beanstalk
 
-#### 4. Push the docker image onto ECR:
-Before pushing the docker image onto ECR, you will first need to create a repository inside of ECR. Once you do that, in your ECR console you will have push commands that you have to run in your terminal in order for your image to be pushed on ECR (Note: be sure that your terminal path is in **server** folder, where your [Dockerfile](https://github.com/rangoc/reactjs-nodejs-mysql/tree/master/server) is located ). 
+### Step 4: Verify Deployment
+After deployment completes, verify all resources are working:
 
-#### 5. Deploy the [public load balanced EC2 service template](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/cloudformation/service-ec2-public-lb.yml)
+- Check EC2 instances health
+- Verify RDS connection
+- Test S3 bucket access
+- Open the frontend URL in a browser
+- Test API endpoints
 
-Before running the deploy command, make sure to add [Image URI](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/cloudformation/service-ec2-public-lb.yml) that you get in your ECR repository once the image has been pushed, then run: 
-
-`aws cloudformation deploy --template-file service-ec2-public-lb.yml --stack-name [YOUR STACK NAME 4]`
-
-#### 6. Deploy [S3](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/cloudformation/s3.yml)
-
-`aws cloudformation deploy --template-file s3.yml --stack-name [YOUR STACK NAME 5]`
-
-#### 7. Upload React on S3: 
-
-Once the deployment from step 6. is done, and bucket is created on your AWS account, make sure to grab it's name and edit [deploy script](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/client/package.json) with the bucket name you just grabbed.
-
-Next, in your AWS console, go to your Load Balancer that was created in step 3. and copy it's DNS name. You need to paste it  in **fetch link** in:[Create.js](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/client/src/Components/Create.js),[Remove.js](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/client/src/Components/Remove.js), [Edit.js](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/client/src/Components/Edit.js) and [App.js](https://github.com/rangoc/reactjs-nodejs-mysql/blob/master/client/src/App.js)
-
-Last but not least, run the following two commands from client path in your terminal: 
-
-`npm run build`<br/>
-`npm run deploy`
+## Project Structure

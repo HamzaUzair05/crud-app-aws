@@ -1,0 +1,22 @@
+.custom-file-input:hover {
+  cursor: pointer;
+}
+
+.custom-file-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress {
+  height: 20px;
+}
+
+.progress-bar {
+  transition: width 0.5s ease;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
+}

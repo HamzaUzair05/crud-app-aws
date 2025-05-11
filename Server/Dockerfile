@@ -1,13 +1,21 @@
-FROM node:latest
+FROM node:14
 
-RUN mkdir -p /src/app
+WORKDIR /usr/src/app
 
-WORKDIR /src/app
+# Copy package.json and package-lock.json
+COPY package*.json ./
 
-COPY . /src/app
-
+# Install dependencies
 RUN npm install
 
+# Copy the rest of the application
+COPY . .
+
+# Create uploads directory
+RUN mkdir -p uploads && chmod 777 uploads
+
+# Expose the port
 EXPOSE 9000
 
-CMD [ "npm", "run" , "start" ]
+# Start the app
+CMD ["npm", "start"]

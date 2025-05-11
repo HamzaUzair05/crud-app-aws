@@ -1,0 +1,209 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EC2 instances with Docker for the Node.js backend'
+
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+  
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+    ConstraintDescription: Must be a valid EC2 instance type.
+  
+  ImageId:
+    Description: AMI ID for the EC2 instances
+    Type: AWS::EC2::Image::Id
+    Default: ami-0c55b159cbfafe1f0
+  
+  VPC:
+    Description: VPC where the EC2 instances will be launched
+    Type: AWS::EC2::VPC::Id
+  
+  Subnets:
+    Description: List of subnets where the EC2 instances will be launched
+    Type: List<AWS::EC2::Subnet::Id>
+  
+  SecurityGroup:
+    Description: Security group for the EC2 instances
+    Type: AWS::EC2::SecurityGroup::Id
+  
+  DockerImage:
+    Description: Docker image URI for the application
+    Type: String
+    Default: your-name-contacts-backend:latest
+
+Resources:
+  # IAM Role for EC2 Instances
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonECR-FullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+      Path: "/"
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: "/"
+      Roles:
+        - !Ref EC2Role
+
+  # Auto Scaling Group
+  EC2LaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref ImageId
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      SecurityGroups:
+        - !Ref SecurityGroup
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          # Update system
+          yum update -y
+          
+          # Install docker
+          amazon-linux-extras install docker -y
+          service docker start
+          chkconfig docker on
+          
+          # Install AWS CLI
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          ./aws/install
+          
+          # Pull Docker image and run container
+          aws ecr get-login-password --region ${AWS::Region} | docker login --username AWS --password-stdin $(echo ${DockerImage} | cut -d / -f 1)
+          docker pull ${DockerImage}
+          docker run -d -p 80:9000 \
+            -e DB_HOST=${RDSEndpoint} \
+            -e DB_USER=${DBUser} \
+            -e DB_PASSWORD=${DBPassword} \
+            -e DB_NAME=${DBName} \
+            -e AWS_REGION=${AWS::Region} \
+            -e S3_BUCKET=${S3Bucket} \
+            -e JWT_SECRET=${JWTSecret} \
+            ${DockerImage}
+
+  EC2AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchConfigurationName: !Ref EC2LaunchConfig
+      MinSize: 1
+      MaxSize: 3
+      DesiredCapacity: 2
+      VPCZoneIdentifier: !Ref Subnets
+      TargetGroupARNs:
+        - !Ref ALBTargetGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-ec2
+          PropagateAtLaunch: true
+
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets: !Ref Subnets
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-alb
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /healthcheck
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId: !Ref VPC
+      TargetType: instance
+
+  # Security Group for ALB
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the Application Load Balancer
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+Parameters:
+  RDSEndpoint:
+    Description: Endpoint of the RDS instance
+    Type: String
+  
+  DBUser:
+    Description: Username for the database
+    Type: String
+    Default: admin
+  
+  DBPassword:
+    Description: Password for the database
+    Type: String
+    NoEcho: true
+  
+  DBName:
+    Description: Database name
+    Type: String
+    Default: contacts_db
+  
+  S3Bucket:
+    Description: S3 bucket for file storage
+    Type: String
+  
+  JWTSecret:
+    Description: Secret for JWT token generation
+    Type: String
+    NoEcho: true
+
+Outputs:
+  LoadBalancerDNS:
+    Description: DNS name of the load balancer
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  
+  LoadBalancerURL:
+    Description: URL of the application
+    Value: !Sub http://${ApplicationLoadBalancer.DNSName}

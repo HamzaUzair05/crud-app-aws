@@ -1,0 +1,73 @@
+version: '3'
+
+services:
+  # Backend API
+  backend:
+    build: ./Server
+    ports:
+      - "9000:9000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=database
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_NAME=contacts_db
+      - JWT_SECRET=local-dev-secret
+      - S3_BUCKET=local-bucket
+      - AWS_REGION=us-east-1
+      # DO NOT add AWS credentials here for production
+      # For development only:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - ./Server:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - database
+    restart: unless-stopped
+
+  # React Frontend
+  frontend:
+    build: ./client
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:9000
+    volumes:
+      - ./client:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # MySQL Database
+  database:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=contacts_db
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./Server/setup.sql:/docker-entrypoint-initdb.d/setup.sql
+    restart: unless-stopped
+
+  # LocalStack for emulating AWS services locally
+  localstack:
+    image: localstack/localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEFAULT_REGION=us-east-1
+      - AWS_DEFAULT_REGION=us-east-1
+      - HOSTNAME_EXTERNAL=localstack
+    volumes:
+      - ./setup/localstack:/docker-entrypoint-initaws.d
+      - localstack_data:/tmp/localstack
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  localstack_data:

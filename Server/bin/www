@@ -86,5 +86,31 @@ function onListening() {
   var bind = typeof addr === 'string'
     ? 'pipe ' + addr
     : 'port ' + addr.port;
+  console.log('=======================================');
+  console.log(`Server listening on ${bind}`);
+  console.log('=======================================');
+  
+  // Print all registered routes for debugging
+  console.log('Registered routes:');
+  const routes = [];
+  
+  app._router.stack.forEach(function(middleware){
+    if(middleware.route){ // routes registered directly on the app
+      routes.push(middleware.route);
+    } else if(middleware.name === 'router'){ // router middleware 
+      middleware.handle.stack.forEach(function(handler){
+        if(handler.route){
+          routes.push(handler.route);
+        }
+      });
+    }
+  });
+  
+  routes.forEach(route => {
+    const methods = Object.keys(route.methods).filter(m => route.methods[m]);
+    console.log(`${methods.join(', ')} ${route.path}`);
+  });
+  console.log('=======================================');
+  
   debug('Listening on ' + bind);
 }

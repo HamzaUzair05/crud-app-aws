@@ -76,15 +76,46 @@ class Edit extends React.Component {
   }
 
     handleSubmit = (event) => {
-      fetch('/put', { //Loadbalancer DNS Name + /put
+      event.preventDefault();
+      
+      // Validate date format if provided
+      if (this.state.formValue.datumRodjenja && !/^\d{4}-\d{2}-\d{2}$/.test(this.state.formValue.datumRodjenja)) {
+        alert('Please enter date in YYYY-MM-DD format (e.g., 1990-01-31)');
+        return;
+      }
+      
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('You must be logged in to update contacts');
+        return;
+      }
+      
+      fetch('/api/auth/put', {
           method: 'PUT',
           body: JSON.stringify(this.state.formValue),
-          headers: {"Content-Type": "application/json"}
+          headers: {
+            "Content-Type": "application/json",
+            "x-auth-token": token  // Add the token to the request headers
+          }
         })
-        .then(res => this.close())
-        .then(res => this.updateData());
-
-        event.preventDefault();  
+        .then(res => {
+          if (!res.ok) {
+            return res.json().then(err => {
+              console.error('Error details:', err);
+              throw new Error(err.msg || 'Failed to update contact');
+            });
+          }
+          return res.text();
+        })
+        .then(res => {
+          this.close();
+          this.updateData();
+        })
+        .catch(err => {
+          console.error(err);
+          alert(err.message || 'Error updating contact');
+        });
     }
 
     render() {
@@ -93,7 +124,7 @@ class Edit extends React.Component {
         <React.Fragment>
           <Modal show={this.state.show} onHide={this.close} size="md">
             <Modal.Header>
-              <Modal.Title>Izmijeni korisnika</Modal.Title>
+              <Modal.Title>Edit User</Modal.Title>
             </Modal.Header>
             <Modal.Body>
               <Form
@@ -102,11 +133,11 @@ class Edit extends React.Component {
                 formValue={this.state.formValue}
               >
                 <FormGroup>
-                  <ControlLabel>Ime</ControlLabel>
+                  <ControlLabel>First Name</ControlLabel>
                   <FormControl name="ime"/>
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>Prezime</ControlLabel>
+                  <ControlLabel>Last Name</ControlLabel>
                   <FormControl name="prezime"/>
                 </FormGroup>
                 <FormGroup>
@@ -114,15 +145,15 @@ class Edit extends React.Component {
                   <FormControl name="email" type="email"/>
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>Telefon</ControlLabel>
+                  <ControlLabel>Phone</ControlLabel>
                   <FormControl name="telefon" />
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>Adresa</ControlLabel>
+                  <ControlLabel>Address</ControlLabel>
                   <FormControl name="adresa" />
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>Linkedin</ControlLabel>
+                  <ControlLabel>LinkedIn</ControlLabel>
                   <FormControl name="linkedin" />
                 </FormGroup>
                 <FormGroup>
@@ -134,21 +165,21 @@ class Edit extends React.Component {
                   <FormControl name="instagram" />
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>Datum rodjenja</ControlLabel>
+                  <ControlLabel>Date of Birth</ControlLabel>
                   <FormControl name="datumRodjenja" />
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>JMBG</ControlLabel>
+                  <ControlLabel>ID Number</ControlLabel>
                   <FormControl name="jmbg" disabled={disabled} />
                 </FormGroup>
               </Form>
             </Modal.Body>
             <Modal.Footer>
               <Button onClick={this.handleSubmit} appearance="primary">
-                Snimi
+                Save
               </Button>
               <Button onClick={this.close} appearance="subtle">
-                Otkazi
+                Cancel
               </Button>
             </Modal.Footer>
           </Modal>

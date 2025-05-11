@@ -1,0 +1,131 @@
+name: CRUD App CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+        
+    - name: Install Backend Dependencies
+      run: |
+        cd Server
+        npm ci
+        
+    - name: Run Backend Tests
+      run: |
+        cd Server
+        npm test
+        
+    - name: Install Frontend Dependencies
+      run: |
+        cd client
+        npm ci
+        
+    - name: Run Frontend Tests
+      run: |
+        cd client
+        npm test
+        
+  build-and-deploy:
+    name: Build and Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+        
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+      
+    - name: Build, tag, and push backend image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd Server
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+        
+    - name: Update ECS service
+      if: ${{ secrets.DEPLOY_TO_ECS == 'true' }}
+      run: |
+        aws ecs update-service --cluster ${{ secrets.ECS_CLUSTER_NAME }} \
+                               --service ${{ secrets.ECS_SERVICE_NAME }} \
+                               --force-new-deployment
+                               
+    - name: Build and deploy frontend
+      run: |
+        cd client
+        npm ci
+        npm run build
+        
+    - name: Deploy to Elastic Beanstalk
+      uses: einaregilsson/beanstalk-deploy@v14
+      with:
+        aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        application_name: ${{ secrets.EB_APPLICATION_NAME }}
+        environment_name: ${{ secrets.EB_ENVIRONMENT_NAME }}
+        version_label: ${{ github.sha }}
+        region: ${{ secrets.AWS_REGION }}
+        deployment_package: client/build.zip
+        
+    - name: Create frontend deployment package
+      run: |
+        cd client
+        zip -r ../build.zip build
+        
+  notify:
+    name: Notify Deployment Status
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Notify success
+      if: success()
+      uses: slackapi/slack-github-action@v1
+      with:
+        payload: |
+          {
+            "text": "🚀 Deployment Successful! Commit: ${{ github.sha }}"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+        
+    - name: Notify failure
+      if: failure()
+      uses: slackapi/slack-github-action@v1
+      with:
+        payload: |
+          {
+            "text": "❌ Deployment Failed! Commit: ${{ github.sha }}"
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

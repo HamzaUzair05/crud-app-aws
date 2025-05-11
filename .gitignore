@@ -1,0 +1,14 @@
+# Environment files with credentials
+.env
+.env.local
+.env.development
+.env.production
+set-aws-profile.ps1
+
+# Other files to ignore
+node_modules/
+.DS_Store
+uploads/
+build/
+dist/
+coverage/

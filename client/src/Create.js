@@ -72,17 +72,53 @@ class Create extends React.Component {
     }
     
     handleSubmit = (event) => {
-      fetch('/post', { //Loadbalancer DNS Name + /post
+      event.preventDefault();
+      
+      console.log('Submitting form with data:', this.state.formValue);
+      
+      // Validate date format if provided
+      if (this.state.formValue.datumRodjenja && !/^\d{4}-\d{2}-\d{2}$/.test(this.state.formValue.datumRodjenja)) {
+        alert('Please enter date in YYYY-MM-DD format (e.g., 1990-01-31)');
+        return;
+      }
+      
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('You must be logged in to create contacts');
+        return;
+      }
+      
+      fetch('/api/auth/post', {
           method: 'POST',
           body: JSON.stringify(this.state.formValue),
           headers: {
-            "Content-Type": "application/json"
-        }
+            "Content-Type": "application/json",
+            "x-auth-token": token  // Add the token to the request headers
+          }
         })
-        .then(res => this.close())
-        .then(res => this.updateData())
-        .then(res => this.resetForm());
-        event.preventDefault();  
+        .then(res => {
+          console.log('Response status:', res.status);
+          if (!res.ok) {
+            if (res.status === 401) {
+              throw new Error('Authentication failed. Please log in again.');
+            }
+            return res.json().then(err => {
+              throw new Error(err.msg || 'Failed to create contact');
+            });
+          }
+          return res.text();
+        })
+        .then(res => {
+          console.log('Success response:', res);
+          this.close();
+          this.updateData();
+          this.resetForm();
+        })
+        .catch(err => {
+          console.error('Fetch error:', err);
+          alert(err.message || 'Error creating contact');
+        });
     }
 
     render() {
@@ -90,7 +126,7 @@ class Create extends React.Component {
         <React.Fragment>
           <Modal show={this.state.show} onHide={this.close} size="md">
             <Modal.Header>
-              <Modal.Title>Novi korisnik</Modal.Title>
+              <Modal.Title>New User</Modal.Title>
             </Modal.Header>
             <Modal.Body>
               <Form
@@ -99,11 +135,11 @@ class Create extends React.Component {
                 formValue={this.state.formValue}
               >
                 <FormGroup>
-                  <ControlLabel>Ime</ControlLabel>
+                  <ControlLabel>First Name</ControlLabel>
                   <FormControl name="ime" />
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>Prezime</ControlLabel>
+                  <ControlLabel>Last Name</ControlLabel>
                   <FormControl name="prezime"/>
                 </FormGroup>
                 <FormGroup>
@@ -111,15 +147,15 @@ class Create extends React.Component {
                   <FormControl name="email" type="email"/>
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>Telefon</ControlLabel>
+                  <ControlLabel>Phone</ControlLabel>
                   <FormControl name="telefon" />
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>Adresa</ControlLabel>
+                  <ControlLabel>Address</ControlLabel>
                   <FormControl name="adresa" />
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>Linkedin</ControlLabel>
+                  <ControlLabel>LinkedIn</ControlLabel>
                   <FormControl name="linkedin" />
                 </FormGroup>
                 <FormGroup>
@@ -131,21 +167,21 @@ class Create extends React.Component {
                   <FormControl name="instagram" />
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>Datum rodjenja</ControlLabel>
+                  <ControlLabel>Date of Birth</ControlLabel>
                   <FormControl name="datumRodjenja" />
                 </FormGroup>
                 <FormGroup>
-                  <ControlLabel>JMBG</ControlLabel>
+                  <ControlLabel>ID Number</ControlLabel>
                   <FormControl name="jmbg" />
                 </FormGroup>
               </Form>
             </Modal.Body>
             <Modal.Footer>
               <Button onClick={this.handleSubmit} appearance="primary">
-                Kreiraj
+                Create
               </Button>
               <Button onClick={this.close} appearance="subtle">
-                Ponisti
+                Cancel
               </Button>
             </Modal.Footer>
           </Modal>
